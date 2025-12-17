@@ -1,0 +1,163 @@
+.dice {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(145deg, #ffffff 0%, #f0f0f5 100%);
+  border-radius: 10px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dice:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.18),
+    0 2px 4px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.dice-hidden {
+  background: linear-gradient(145deg, #3a3f5c 0%, #2d3148 100%);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 24px;
+  font-weight: bold;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.dice.rolling {
+  animation: diceRoll 0.15s infinite ease-in-out;
+}
+
+@keyframes diceRoll {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-8deg) scale(1.02); }
+  75% { transform: rotate(8deg) scale(1.02); }
+}
+
+.dice-face {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(145deg, #2d3748, #1a202c);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.3),
+    0 1px 1px rgba(255, 255, 255, 0.5);
+}
+
+.dot.center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.dot.top-left {
+  top: 8px;
+  left: 8px;
+}
+
+.dot.top-right {
+  top: 8px;
+  right: 8px;
+}
+
+.dot.bottom-left {
+  bottom: 8px;
+  left: 8px;
+}
+
+.dot.bottom-right {
+  bottom: 8px;
+  right: 8px;
+}
+
+.dot.middle-left {
+  top: 50%;
+  left: 8px;
+  transform: translateY(-50%);
+}
+
+.dot.middle-right {
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+}
+
+/* 1点特殊颜色（万能） */
+.dice-1 .dot {
+  background: linear-gradient(145deg, #e53e3e, #c53030);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.2),
+    0 0 8px rgba(229, 62, 62, 0.4),
+    0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+/* 尺寸变体 - 小 */
+.dice.dice-small {
+  width: 36px;
+  height: 36px;
+  border-radius: 7px;
+  margin: 3px;
+}
+
+.dice.dice-small .dot {
+  width: 7px;
+  height: 7px;
+}
+
+.dice.dice-small .dot.top-left,
+.dice.dice-small .dot.top-right { top: 6px; }
+.dice.dice-small .dot.bottom-left,
+.dice.dice-small .dot.bottom-right { bottom: 6px; }
+.dice.dice-small .dot.top-left,
+.dice.dice-small .dot.bottom-left { left: 6px; }
+.dice.dice-small .dot.top-right,
+.dice.dice-small .dot.bottom-right { right: 6px; }
+.dice.dice-small .dot.middle-left { left: 6px; }
+.dice.dice-small .dot.middle-right { right: 6px; }
+
+/* 尺寸变体 - 大 */
+.dice.dice-large {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+}
+
+.dice.dice-large .dot {
+  width: 12px;
+  height: 12px;
+}
+
+.dice.dice-large .dot.top-left,
+.dice.dice-large .dot.top-right { top: 10px; }
+.dice.dice-large .dot.bottom-left,
+.dice.dice-large .dot.bottom-right { bottom: 10px; }
+.dice.dice-large .dot.top-left,
+.dice.dice-large .dot.bottom-left { left: 10px; }
+.dice.dice-large .dot.top-right,
+.dice.dice-large .dot.bottom-right { right: 10px; }
+.dice.dice-large .dot.middle-left { left: 10px; }
+.dice.dice-large .dot.middle-right { right: 10px; }
+
+.dice-hidden.dice-small {
+  font-size: 16px;
+}
+
+.dice-hidden.dice-large {
+  font-size: 28px;
+}

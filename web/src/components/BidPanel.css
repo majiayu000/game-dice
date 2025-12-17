@@ -1,0 +1,206 @@
+.bid-panel {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(245, 245, 250, 0.95));
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  backdrop-filter: blur(10px);
+}
+
+.bid-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.bid-selector {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.bid-selector label {
+  width: 50px;
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 15px;
+}
+
+.number-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(102, 126, 234, 0.08);
+  padding: 6px 12px;
+  border-radius: 30px;
+}
+
+.number-input button {
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  font-size: 22px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.number-input button:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.45);
+}
+
+.number-input button:active {
+  transform: scale(0.95);
+}
+
+.number-input span {
+  width: 50px;
+  text-align: center;
+  font-size: 32px;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.value-buttons {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+}
+
+.value-buttons button {
+  flex: 1;
+  height: 56px;
+  border: 2px solid #e2e8f0;
+  border-radius: 14px;
+  background: white;
+  font-size: 22px;
+  font-weight: 600;
+  color: #4a5568;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.value-buttons button:hover {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.05);
+  transform: translateY(-2px);
+}
+
+.value-buttons button.active {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+  transform: translateY(-2px);
+}
+
+.zhai-toggle {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(102, 126, 234, 0.06);
+  border-radius: 12px;
+}
+
+.zhai-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  color: #4a5568;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.zhai-toggle input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  accent-color: #667eea;
+  cursor: pointer;
+}
+
+.bid-actions {
+  display: flex;
+  gap: 14px;
+}
+
+.btn-bid, .btn-challenge {
+  flex: 1;
+  padding: 16px 24px;
+  border: none;
+  border-radius: 14px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-bid {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+}
+
+.btn-bid::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-bid:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.btn-bid:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.45);
+}
+
+.btn-bid:active:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn-bid:disabled {
+  background: linear-gradient(135deg, #cbd5e0, #a0aec0);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-challenge {
+  background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+  color: white;
+  box-shadow: 0 6px 20px rgba(245, 101, 101, 0.35);
+}
+
+.btn-challenge:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(245, 101, 101, 0.45);
+}
+
+.btn-challenge:active:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn-challenge:disabled {
+  background: linear-gradient(135deg, #cbd5e0, #a0aec0);
+  cursor: not-allowed;
+  box-shadow: none;
+}

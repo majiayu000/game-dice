@@ -1,0 +1,317 @@
+.game-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+  color: white;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.game-page::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(102, 126, 234, 0.08) 0%, transparent 50%);
+  animation: bgPulse 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes bgPulse {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(5%, 5%); }
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.leave-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  border-radius: 10px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.leave-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.round-info {
+  font-size: 1.2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.room-info {
+  font-size: 0.9rem;
+  opacity: 0.5;
+  font-family: monospace;
+  letter-spacing: 1px;
+}
+
+.other-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.other-player {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 14px 16px;
+  min-width: 150px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.other-player:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+}
+
+.other-player.active {
+  background: rgba(102, 126, 234, 0.15);
+  border: 2px solid rgba(102, 126, 234, 0.6);
+  box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
+}
+
+.player-label {
+  font-size: 0.95rem;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.turn-indicator {
+  font-size: 0.75rem;
+  color: #667eea;
+  animation: pulse 1.2s ease-in-out infinite;
+  margin-left: 4px;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.dice-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.current-bid-area {
+  text-align: center;
+  padding: 24px;
+  margin: 16px 0;
+  position: relative;
+  z-index: 1;
+}
+
+.current-bid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.current-bid.empty {
+  opacity: 0.4;
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+}
+
+.bid-label {
+  font-size: 0.85rem;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.bid-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.bid-player {
+  font-size: 0.9rem;
+  opacity: 0.6;
+}
+
+.my-area {
+  text-align: center;
+  padding: 24px 0;
+  position: relative;
+  z-index: 1;
+}
+
+.my-label {
+  font-size: 0.9rem;
+  opacity: 0.6;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.my-dice {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.action-area {
+  margin-top: auto;
+  padding: 16px 0;
+  position: relative;
+  z-index: 1;
+}
+
+.waiting-turn {
+  text-align: center;
+  padding: 24px;
+  opacity: 0.6;
+  margin-top: auto;
+  font-size: 1.1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.waiting-turn::after {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  background: white;
+  border-radius: 50%;
+  margin-left: 4px;
+  animation: dotPulse 1.4s infinite;
+}
+
+@keyframes dotPulse {
+  0%, 80%, 100% { opacity: 0; }
+  40% { opacity: 1; }
+}
+
+.result-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.result-modal {
+  background: linear-gradient(145deg, #1e1e3f, #151530);
+  padding: 36px;
+  border-radius: 24px;
+  text-align: center;
+  max-width: 340px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: modalSlide 0.4s ease;
+}
+
+@keyframes modalSlide {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.result-modal h2 {
+  font-size: 2rem;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.result-detail {
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.result-detail strong {
+  color: #667eea;
+  font-size: 1.6rem;
+}
+
+.result-winner {
+  margin-bottom: 24px;
+  color: #f56565;
+  font-weight: 600;
+}
+
+.result-modal button {
+  padding: 14px 48px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.result-modal button.primary {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+}
+
+.result-modal button.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}

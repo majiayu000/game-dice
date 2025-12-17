@@ -1,0 +1,41 @@
+.player-area {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 10px 0;
+  transition: all 0.3s;
+}
+
+.player-area.active {
+  box-shadow: 0 0 0 3px #667eea;
+}
+
+.player-area.is-me {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.player-name {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.turn-indicator {
+  font-size: 14px;
+  color: #667eea;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.dice-container {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
