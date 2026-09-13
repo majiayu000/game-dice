@@ -13,18 +13,27 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
 
 type AiDifficulty = RoomSettings['aiDifficulty'];
 
+/** Coerce only number/string primitives; reject objects that can throw in Number(). */
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 function clampMaxPlayers(value: unknown): number {
-  const n = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(n)) return DEFAULT_ROOM_SETTINGS.maxPlayers;
+  const n = toFiniteNumber(value);
+  if (n === null) return DEFAULT_ROOM_SETTINGS.maxPlayers;
   return Math.min(MAX_MAX_PLAYERS, Math.max(MIN_MAX_PLAYERS, Math.floor(n)));
 }
 
 function sanitizeTurnTimeLimit(value: unknown): number {
-  const n = typeof value === 'number' ? value : Number(value);
-  if (
-    Number.isFinite(n) &&
-    (ALLOWED_TURN_TIME_LIMITS as readonly number[]).includes(n)
-  ) {
+  const n = toFiniteNumber(value);
+  if (n !== null && (ALLOWED_TURN_TIME_LIMITS as readonly number[]).includes(n)) {
     return n;
   }
   return DEFAULT_ROOM_SETTINGS.turnTimeLimit;
