@@ -136,13 +136,13 @@ io.on('connection', (socket: Socket) => {
     return true;
   };
 
-  socket.on('auth', (data: { userName?: string; userId?: string }) => {
-    // Ignore any client-supplied userId; identity is always server-issued.
-    const name = typeof data?.userName === 'string' ? data.userName.trim() : '';
+  /** Bind a server-issued identity. Returns false when the attempt is rejected. */
+  const authenticate = (rawName: unknown, source: 'handshake' | 'event'): boolean => {
+    const name = typeof rawName === 'string' ? rawName.trim() : '';
     if (!name || name.length > 20) {
-      logger.warn('Auth', 'Invalid auth attempt', { socketId: socket.id });
+      logger.warn('Auth', 'Invalid auth attempt', { socketId: socket.id, source });
       socket.emit('error', createError(ErrorCodes.INVALID_AUTH));
-      return;
+      return false;
     }
 
     // Identity is immutable for the lifetime of this socket. Re-auth would
@@ -152,9 +152,10 @@ io.on('connection', (socket: Socket) => {
       logger.warn('Auth', 'Rejected re-auth on authenticated socket', {
         userId,
         socketId: socket.id,
+        source,
       });
       socket.emit('error', createError(ErrorCodes.INVALID_AUTH));
-      return;
+      return false;
     }
 
     const assignedId = uuidv4();
@@ -162,14 +163,31 @@ io.on('connection', (socket: Socket) => {
     if (existingSocketId && existingSocketId !== socket.id) {
       logger.warn('Auth', 'Rejected duplicate live session', { userId: assignedId, socketId: socket.id });
       socket.emit('error', createError(ErrorCodes.INVALID_AUTH));
-      return;
+      return false;
     }
 
     userId = assignedId;
     userName = name;
     activeSessions.set(userId, socket.id);
-    logger.info('Auth', 'User authenticated', { userId, userName });
+    logger.info('Auth', 'User authenticated', { userId, userName, source });
     socket.emit('connected', { userId, sessionId: socket.id });
+    return true;
+  };
+
+  // Prefer handshake auth so identity is bound before any buffered client
+  // packets are delivered after a reconnect flush.
+  const handshakeName = (socket.handshake.auth as { userName?: unknown } | undefined)?.userName;
+  if (handshakeName !== undefined && handshakeName !== null && handshakeName !== '') {
+    if (!authenticate(handshakeName, 'handshake')) {
+      socket.disconnect(true);
+      return;
+    }
+  }
+
+  socket.on('auth', (data: { userName?: string; userId?: string }) => {
+    // Ignore any client-supplied userId; identity is always server-issued.
+    // Event-based auth remains as a fallback for clients without handshake auth.
+    authenticate(data?.userName, 'event');
   });
 
   socket.on('room:create', (data: { settings?: unknown }) => {

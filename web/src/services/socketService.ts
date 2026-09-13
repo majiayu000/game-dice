@@ -7,6 +7,8 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
 class SocketService {
   private socket: Socket | null = null;
   private listeners: Map<string, Set<(data: unknown) => void>> = new Map();
+  /** True only after the server acknowledges identity via `connected`. */
+  private authenticated = false;
 
   /** Authenticate with display name only; server issues userId. */
   connect(userName: string): Promise<{ userId: string }> {
@@ -16,14 +18,21 @@ class SocketService {
         return;
       }
 
+      this.authenticated = false;
       this.socket?.disconnect();
-      this.socket = io(SERVER_URL, { transports: ['websocket', 'polling'] });
+      // Handshake auth runs before Socket.IO flushes any buffered emits on
+      // reconnect, so room/game actions cannot race ahead of authentication.
+      this.socket = io(SERVER_URL, {
+        transports: ['websocket', 'polling'],
+        auth: { userName },
+      });
 
       const timeout = setTimeout(() => reject(new Error('连接超时')), 5000);
       let settled = false;
 
       const onConnected = (data: { userId: string }) => {
         if (!data?.userId) {
+          this.authenticated = false;
           if (!settled) {
             settled = true;
             clearTimeout(timeout);
@@ -33,6 +42,7 @@ class SocketService {
           return;
         }
 
+        this.authenticated = true;
         // Fan out every identity (including reconnect re-auth) to store listeners.
         this.emitLocal('connected', data);
 
@@ -53,15 +63,16 @@ class SocketService {
         }
       };
 
-      this.socket.on('connect', () => {
-        // Never send a client-chosen userId; identity is server-assigned.
-        this.socket?.emit('auth', { userName });
+      this.socket.on('disconnect', () => {
+        this.authenticated = false;
+        this.emitLocal('disconnect', null);
       });
 
       this.socket.on('connected', onConnected);
       this.socket.on('error', onAuthError);
 
       this.socket.on('connect_error', (err) => {
+        this.authenticated = false;
         if (!settled) {
           settled = true;
           clearTimeout(timeout);
@@ -74,12 +85,23 @@ class SocketService {
   }
 
   disconnect() {
+    this.authenticated = false;
     this.socket?.disconnect();
     this.socket = null;
   }
 
   private emitLocal(event: string, data: unknown) {
     this.listeners.get(event)?.forEach(cb => cb(data));
+  }
+
+  /** Drop app emits until handshake auth completes (no offline send buffer). */
+  private emitApp(event: string, data?: unknown) {
+    if (!this.socket?.connected || !this.authenticated) return;
+    if (data === undefined) {
+      this.socket.emit(event);
+    } else {
+      this.socket.emit(event, data);
+    }
   }
 
   private setupListeners() {
@@ -102,43 +124,43 @@ class SocketService {
   }
 
   createRoom(settings: RoomSettings) {
-    this.socket?.emit('room:create', { settings });
+    this.emitApp('room:create', { settings });
   }
 
   joinRoom(roomCode: string) {
-    this.socket?.emit('room:join', { roomCode });
+    this.emitApp('room:join', { roomCode });
   }
 
   leaveRoom() {
-    this.socket?.emit('room:leave');
+    this.emitApp('room:leave');
   }
 
   setReady(ready: boolean) {
-    this.socket?.emit('room:ready', { ready });
+    this.emitApp('room:ready', { ready });
   }
 
   addAI() {
-    this.socket?.emit('room:addAI');
+    this.emitApp('room:addAI');
   }
 
   removeAI(playerId: string) {
-    this.socket?.emit('room:removeAI', { playerId });
+    this.emitApp('room:removeAI', { playerId });
   }
 
   startGame() {
-    this.socket?.emit('room:start');
+    this.emitApp('room:start');
   }
 
   makeBid(bid: Bid) {
-    this.socket?.emit('game:bid', { bid });
+    this.emitApp('game:bid', { bid });
   }
 
   challenge() {
-    this.socket?.emit('game:challenge');
+    this.emitApp('game:challenge');
   }
 
   nextRound() {
-    this.socket?.emit('game:nextRound');
+    this.emitApp('game:nextRound');
   }
 }
 

@@ -31,6 +31,10 @@ export function useSocket() {
         setUser(userId, name);
         setConnectionState('connected');
       }),
+      // Mark reconnecting so the UI stops enqueueing room/game actions offline.
+      socketService.on('disconnect', () => {
+        setConnectionState('connecting');
+      }),
       socketService.on('room:created', (data) => setRoom((data as { room: Room }).room)),
       socketService.on('room:joined', (data) => setRoom((data as { room: Room }).room)),
       socketService.on('room:updated', (data) => setRoom((data as { room: Room }).room)),
