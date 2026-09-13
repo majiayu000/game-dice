@@ -1,6 +1,7 @@
 import express from 'express';
 import { createServer } from 'http';
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
+import { v4 as uuidv4 } from 'uuid';
 import { RoomManager } from './core/RoomManager.js';
 import { GameEngine } from './core/GameEngine.js';
 import type { Bid, GameError } from './types/index.js';
@@ -56,6 +57,14 @@ const io = new Server(httpServer, {
 
 const roomManager = new RoomManager();
 const gameEngine = new GameEngine();
+/** Live userId → socket.id; one active connection per identity. */
+const activeSessions = new Map<string, string>();
+
+function releaseSession(userId: string, socketId: string) {
+  if (userId && activeSessions.get(userId) === socketId) {
+    activeSessions.delete(userId);
+  }
+}
 
 gameEngine.setAIActionCallback((roomId, decision) => {
   const state = gameEngine.getState(roomId);
@@ -113,24 +122,52 @@ gameEngine.setPlayerTimeoutCallback((roomId, playerId) => {
   }
 });
 
-io.on('connection', (socket) => {
+io.on('connection', (socket: Socket) => {
   let userId = '';
   let userName = '';
   logger.info('Socket', 'Client connected', { socketId: socket.id });
 
-  socket.on('auth', (data: { userId: string; userName: string }) => {
-    if (!data.userId || typeof data.userId !== 'string') {
+  const requireAuth = (): boolean => {
+    if (!userId || activeSessions.get(userId) !== socket.id) {
+      logger.warn('Auth', 'Unauthenticated handler rejected', { socketId: socket.id });
+      socket.emit('error', createError(ErrorCodes.INVALID_AUTH));
+      return false;
+    }
+    return true;
+  };
+
+  socket.on('auth', (data: { userName?: string; userId?: string }) => {
+    // Ignore any client-supplied userId; identity is always server-issued.
+    const name = typeof data?.userName === 'string' ? data.userName.trim() : '';
+    if (!name || name.length > 20) {
       logger.warn('Auth', 'Invalid auth attempt', { socketId: socket.id });
       socket.emit('error', createError(ErrorCodes.INVALID_AUTH));
       return;
     }
-    userId = data.userId.trim();
-    userName = (data.userName || `玩家${data.userId.slice(0, 4)}`).trim();
+
+    // Re-auth on the same socket: release the previous binding first.
+    if (userId) {
+      releaseSession(userId, socket.id);
+      userId = '';
+    }
+
+    const assignedId = uuidv4();
+    const existingSocketId = activeSessions.get(assignedId);
+    if (existingSocketId && existingSocketId !== socket.id) {
+      logger.warn('Auth', 'Rejected duplicate live session', { userId: assignedId, socketId: socket.id });
+      socket.emit('error', createError(ErrorCodes.INVALID_AUTH));
+      return;
+    }
+
+    userId = assignedId;
+    userName = name;
+    activeSessions.set(userId, socket.id);
     logger.info('Auth', 'User authenticated', { userId, userName });
     socket.emit('connected', { userId, sessionId: socket.id });
   });
 
   socket.on('room:create', (data: { settings?: unknown }) => {
+    if (!requireAuth()) return;
     const settings = sanitizeRoomSettings(data?.settings);
     const room = roomManager.createRoom(userId, userName, settings);
     socket.join(room.id);
@@ -144,6 +181,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('room:join', (data: { roomCode: string }) => {
+    if (!requireAuth()) return;
     const room = roomManager.joinRoom(userId, userName, data.roomCode);
     if (!room) {
       logger.warn('Room', 'Join failed - room not found', { roomCode: data.roomCode, userId });
@@ -157,6 +195,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('room:leave', () => {
+    if (!requireAuth()) return;
     const { room, disbanded } = roomManager.leaveRoom(userId);
     if (disbanded) {
       io.to(room?.id || '').emit('room:disbanded', {});
@@ -169,11 +208,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('room:ready', (data: { ready: boolean }) => {
+    if (!requireAuth()) return;
     const room = roomManager.setReady(userId, data.ready);
     if (room) io.to(room.id).emit('room:updated', { room });
   });
 
   socket.on('room:addAI', () => {
+    if (!requireAuth()) return;
     logger.debug('Room', 'addAI request', { userId });
     const room = roomManager.getPlayerRoom(userId);
     if (!room) {
@@ -197,6 +238,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('room:removeAI', (data: { playerId: string }) => {
+    if (!requireAuth()) return;
     const room = roomManager.getPlayerRoom(userId);
     if (!room) {
       socket.emit('error', createError(ErrorCodes.NOT_IN_ROOM));
@@ -212,6 +254,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('room:start', () => {
+    if (!requireAuth()) return;
     const room = roomManager.getPlayerRoom(userId);
     if (!room) {
       socket.emit('error', createError(ErrorCodes.NOT_IN_ROOM));
@@ -233,6 +276,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('game:bid', (data: unknown) => {
+    if (!requireAuth()) return;
     const bid = parseBidPayload(data);
     if (!bid) {
       socket.emit('error', createError(ErrorCodes.INVALID_BID));
@@ -265,6 +309,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('game:challenge', () => {
+    if (!requireAuth()) return;
     const room = roomManager.getPlayerRoom(userId);
     if (!room) {
       socket.emit('error', createError(ErrorCodes.NOT_IN_ROOM));
@@ -296,6 +341,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('game:nextRound', () => {
+    if (!requireAuth()) return;
     const room = roomManager.getPlayerRoom(userId);
     if (!room) {
       socket.emit('error', createError(ErrorCodes.NOT_IN_ROOM));
@@ -320,6 +366,8 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     logger.info('Socket', 'Client disconnected', { userId, socketId: socket.id });
+    releaseSession(userId, socket.id);
+    if (!userId) return;
     const { room, disbanded } = roomManager.leaveRoom(userId);
     if (disbanded && room) {
       logger.info('Room', 'Room disbanded', { roomId: room.id });

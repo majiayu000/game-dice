@@ -8,25 +8,44 @@ class SocketService {
   private socket: Socket | null = null;
   private listeners: Map<string, Set<(data: unknown) => void>> = new Map();
 
-  connect(userId: string, userName: string): Promise<void> {
+  /** Authenticate with display name only; server issues userId. */
+  connect(userName: string): Promise<{ userId: string }> {
     return new Promise((resolve, reject) => {
       if (this.socket?.connected) {
-        resolve();
+        reject(new Error('已连接'));
         return;
       }
 
+      this.socket?.disconnect();
       this.socket = io(SERVER_URL, { transports: ['websocket', 'polling'] });
 
       const timeout = setTimeout(() => reject(new Error('连接超时')), 5000);
 
+      const onConnected = (data: { userId: string }) => {
+        clearTimeout(timeout);
+        this.socket?.off('error', onAuthError);
+        if (!data?.userId) {
+          reject(new Error('认证失败'));
+          return;
+        }
+        resolve({ userId: data.userId });
+      };
+
+      const onAuthError = (err: { code?: string; message?: string }) => {
+        if (err?.code === 'INVALID_AUTH') {
+          clearTimeout(timeout);
+          this.socket?.off('connected', onConnected);
+          reject(new Error(err.message || '认证失败'));
+        }
+      };
+
       this.socket.on('connect', () => {
-        this.socket?.emit('auth', { userId, userName });
+        // Never send a client-chosen userId; identity is server-assigned.
+        this.socket?.emit('auth', { userName });
       });
 
-      this.socket.on('connected', () => {
-        clearTimeout(timeout);
-        resolve();
-      });
+      this.socket.on('connected', onConnected);
+      this.socket.on('error', onAuthError);
 
       this.socket.on('connect_error', (err) => {
         clearTimeout(timeout);

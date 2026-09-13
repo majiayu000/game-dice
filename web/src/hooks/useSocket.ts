@@ -5,19 +5,20 @@ import type { Room } from '../types/room';
 import type { GameState } from '../types/game';
 
 export function useSocket() {
-  const { userId, userName, setConnectionState, setRoom, setGameState, setError } = useGameStore();
+  const { userName, setUser, setConnectionState, setRoom, setGameState, setError } = useGameStore();
 
   const connect = useCallback(async () => {
-    if (!userId) return;
+    if (!userName) return;
     setConnectionState('connecting');
     try {
-      await socketService.connect(userId, userName);
+      const { userId } = await socketService.connect(userName);
+      setUser(userId, userName);
       setConnectionState('connected');
     } catch {
       setConnectionState('disconnected');
       setError('连接服务器失败');
     }
-  }, [userId, userName, setConnectionState, setError]);
+  }, [userName, setUser, setConnectionState, setError]);
 
   useEffect(() => {
     const unsubscribers = [
