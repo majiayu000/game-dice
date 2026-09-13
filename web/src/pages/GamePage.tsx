@@ -10,10 +10,11 @@ import './GamePage.css';
 
 export function GamePage() {
   const navigate = useNavigate();
-  const { userId, gameState, currentRoom, setGameState } = useGameStore();
+  const { userId, gameState, currentRoom, error, setError, setGameState } = useGameStore();
   useSocket();
   const [showResult, setShowResult] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [nextRoundLoading, setNextRoundLoading] = useState(false);
   const [resultData, setResultData] = useState<{
     actualCount: number;
     challengerWins: boolean;
@@ -30,14 +31,33 @@ export function GamePage() {
       setResultData(data as typeof resultData);
       setShowResult(true);
       setLoading(false);
+      setNextRoundLoading(false);
+      setError(null);
     });
     return () => { unsub(); };
-  }, []);
+  }, [setError]);
+
+  // Close result modal only after the server advances past the result phase.
+  useEffect(() => {
+    if (showResult && gameState && gameState.phase !== 'result') {
+      setShowResult(false);
+      setResultData(null);
+      setNextRoundLoading(false);
+      setError(null);
+    }
+  }, [gameState, showResult, setError]);
+
+  useEffect(() => {
+    if (error && nextRoundLoading) {
+      setNextRoundLoading(false);
+    }
+  }, [error, nextRoundLoading]);
 
   if (!gameState) return null;
 
   const me = gameState.players.find(p => p.id === userId);
   const isMyTurn = me?.isCurrentTurn;
+  const isHost = currentRoom?.host === userId;
   const currentPlayer = gameState.players[gameState.currentPlayerIndex];
   const otherPlayers = gameState.players.filter(p => p.id !== userId);
 
@@ -52,8 +72,9 @@ export function GamePage() {
   };
 
   const handleNextRound = () => {
-    setShowResult(false);
-    setResultData(null);
+    if (!isHost || nextRoundLoading) return;
+    setError(null);
+    setNextRoundLoading(true);
     socketService.nextRound();
   };
 
@@ -140,7 +161,20 @@ export function GamePage() {
             <p className="result-winner">
               {gameState.players.find(p => p.id === gameState.loser)?.name} 输了这轮!
             </p>
-            <button className="primary" onClick={handleNextRound}>下一轮</button>
+            {error && (
+              <p className="error" onClick={() => setError(null)}>{error}</p>
+            )}
+            {isHost ? (
+              <button
+                className="primary"
+                onClick={handleNextRound}
+                disabled={nextRoundLoading}
+              >
+                {nextRoundLoading ? '处理中...' : '下一轮'}
+              </button>
+            ) : (
+              <p className="waiting-host">等待房主开始下一轮...</p>
+            )}
           </div>
         </div>
       )}
