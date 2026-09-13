@@ -12,6 +12,7 @@ export function useSocket() {
     setConnectionState('connecting');
     try {
       const { userId } = await socketService.connect(userName);
+      // Initial identity; reconnect replacements arrive via the `connected` listener.
       setUser(userId, userName);
       setConnectionState('connected');
     } catch {
@@ -22,6 +23,14 @@ export function useSocket() {
 
   useEffect(() => {
     const unsubscribers = [
+      // Keep store identity in sync on initial connect and Socket.IO re-auth.
+      socketService.on('connected', (data) => {
+        const { userId } = data as { userId: string };
+        if (!userId) return;
+        const name = useGameStore.getState().userName;
+        setUser(userId, name);
+        setConnectionState('connected');
+      }),
       socketService.on('room:created', (data) => setRoom((data as { room: Room }).room)),
       socketService.on('room:joined', (data) => setRoom((data as { room: Room }).room)),
       socketService.on('room:updated', (data) => setRoom((data as { room: Room }).room)),
@@ -31,7 +40,7 @@ export function useSocket() {
       socketService.on('error', (data) => setError((data as { message: string }).message)),
     ];
     return () => unsubscribers.forEach(unsub => unsub());
-  }, [setRoom, setGameState, setError]);
+  }, [setUser, setConnectionState, setRoom, setGameState, setError]);
 
   return { connect };
 }

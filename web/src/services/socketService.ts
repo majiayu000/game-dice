@@ -20,19 +20,33 @@ class SocketService {
       this.socket = io(SERVER_URL, { transports: ['websocket', 'polling'] });
 
       const timeout = setTimeout(() => reject(new Error('连接超时')), 5000);
+      let settled = false;
 
       const onConnected = (data: { userId: string }) => {
-        clearTimeout(timeout);
-        this.socket?.off('error', onAuthError);
         if (!data?.userId) {
-          reject(new Error('认证失败'));
+          if (!settled) {
+            settled = true;
+            clearTimeout(timeout);
+            this.socket?.off('error', onAuthError);
+            reject(new Error('认证失败'));
+          }
           return;
         }
-        resolve({ userId: data.userId });
+
+        // Fan out every identity (including reconnect re-auth) to store listeners.
+        this.emitLocal('connected', data);
+
+        if (!settled) {
+          settled = true;
+          clearTimeout(timeout);
+          this.socket?.off('error', onAuthError);
+          resolve({ userId: data.userId });
+        }
       };
 
       const onAuthError = (err: { code?: string; message?: string }) => {
-        if (err?.code === 'INVALID_AUTH') {
+        if (err?.code === 'INVALID_AUTH' && !settled) {
+          settled = true;
           clearTimeout(timeout);
           this.socket?.off('connected', onConnected);
           reject(new Error(err.message || '认证失败'));
@@ -48,8 +62,11 @@ class SocketService {
       this.socket.on('error', onAuthError);
 
       this.socket.on('connect_error', (err) => {
-        clearTimeout(timeout);
-        reject(err);
+        if (!settled) {
+          settled = true;
+          clearTimeout(timeout);
+          reject(err);
+        }
       });
 
       this.setupListeners();
@@ -61,6 +78,10 @@ class SocketService {
     this.socket = null;
   }
 
+  private emitLocal(event: string, data: unknown) {
+    this.listeners.get(event)?.forEach(cb => cb(data));
+  }
+
   private setupListeners() {
     const events = [
       'room:created', 'room:joined', 'room:updated', 'room:playerJoined',
@@ -69,7 +90,7 @@ class SocketService {
     ];
     events.forEach(event => {
       this.socket?.on(event, (data) => {
-        this.listeners.get(event)?.forEach(cb => cb(data));
+        this.emitLocal(event, data);
       });
     });
   }
