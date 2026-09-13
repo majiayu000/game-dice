@@ -2,6 +2,8 @@ export interface Player {
   id: string;
   name: string;
   dice: number[];
+  /** Present on wire views so clients can render hidden dice placeholders. */
+  diceCount?: number;
   isCurrentTurn: boolean;
   isAI: boolean;
   isConnected: boolean;

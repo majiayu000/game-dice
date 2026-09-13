@@ -4,10 +4,11 @@ import { Server, Socket } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import { RoomManager } from './core/RoomManager.js';
 import { GameEngine } from './core/GameEngine.js';
-import type { Bid, GameError } from './types/index.js';
+import type { Bid, GameError, GameState } from './types/index.js';
 import { ErrorCodes } from './types/index.js';
 import { logger } from './utils/logger.js';
 import { sanitizeRoomSettings } from './utils/roomSettings.js';
+import { sanitizeGameState } from './utils/sanitizeGameState.js';
 
 // 错误消息映射
 const ErrorMessages: Record<string, string> = {
@@ -66,6 +67,25 @@ function releaseSession(userId: string, socketId: string) {
   }
 }
 
+/** Emit per-socket sanitized game state so opponent dice faces never leave the server. */
+function emitSanitizedGameEvent(
+  roomId: string,
+  event: 'game:started' | 'game:stateUpdate',
+  state: GameState
+) {
+  const socketIds = io.sockets.adapter.rooms.get(roomId);
+  if (!socketIds) return;
+
+  for (const socketId of socketIds) {
+    const sock = io.sockets.sockets.get(socketId);
+    if (!sock) continue;
+    const recipientId = (sock.data as { userId?: string }).userId;
+    // Unauthenticated sockets get a fully masked view (no faces for anyone).
+    const view = sanitizeGameState(state, recipientId || '');
+    sock.emit(event, { gameState: view });
+  }
+}
+
 gameEngine.setAIActionCallback((roomId, decision) => {
   const state = gameEngine.getState(roomId);
   if (!state) return;
@@ -79,7 +99,7 @@ gameEngine.setAIActionCallback((roomId, decision) => {
         bid: decision.bid,
         nextPlayerId: newState.players[newState.currentPlayerIndex].id
       });
-      io.to(roomId).emit('game:stateUpdate', { gameState: newState });
+      emitSanitizedGameEvent(roomId, 'game:stateUpdate', newState);
     }
   } else {
     const result = gameEngine.challenge(roomId, currentPlayer.id);
@@ -92,7 +112,7 @@ gameEngine.setAIActionCallback((roomId, decision) => {
         loserId: result.state.loser,
         allDice: result.state.players.map(p => ({ id: p.id, dice: p.dice }))
       });
-      io.to(roomId).emit('game:stateUpdate', { gameState: result.state });
+      emitSanitizedGameEvent(roomId, 'game:stateUpdate', result.state);
     }
   }
 });
@@ -117,7 +137,7 @@ gameEngine.setPlayerTimeoutCallback((roomId, playerId) => {
         loserId: result.state.loser,
         allDice: result.state.players.map(p => ({ id: p.id, dice: p.dice }))
       });
-      io.to(roomId).emit('game:stateUpdate', { gameState: result.state });
+      emitSanitizedGameEvent(roomId, 'game:stateUpdate', result.state);
     }
   }
 });
@@ -168,6 +188,7 @@ io.on('connection', (socket: Socket) => {
 
     userId = assignedId;
     userName = name;
+    (socket.data as { userId?: string }).userId = userId;
     activeSessions.set(userId, socket.id);
     logger.info('Auth', 'User authenticated', { userId, userName, source });
     socket.emit('connected', { userId, sessionId: socket.id });
@@ -296,7 +317,7 @@ io.on('connection', (socket: Socket) => {
     gameEngine.setRoom(room);
     const gameState = gameEngine.initGame(room);
     logger.info('Game', 'Game started', { roomId: room.id, playerCount: room.players.length });
-    io.to(room.id).emit('game:started', { gameState });
+    emitSanitizedGameEvent(room.id, 'game:started', gameState);
   });
 
   socket.on('game:bid', (data: unknown) => {
@@ -329,7 +350,7 @@ io.on('connection', (socket: Socket) => {
       bid,
       nextPlayerId: state.players[state.currentPlayerIndex].id
     });
-    io.to(room.id).emit('game:stateUpdate', { gameState: state });
+    emitSanitizedGameEvent(room.id, 'game:stateUpdate', state);
   });
 
   socket.on('game:challenge', () => {
@@ -361,7 +382,7 @@ io.on('connection', (socket: Socket) => {
       loserId: result.state.loser,
       allDice: result.state.players.map(p => ({ id: p.id, dice: p.dice }))
     });
-    io.to(room.id).emit('game:stateUpdate', { gameState: result.state });
+    emitSanitizedGameEvent(room.id, 'game:stateUpdate', result.state);
   });
 
   socket.on('game:nextRound', () => {
@@ -385,7 +406,7 @@ io.on('connection', (socket: Socket) => {
       socket.emit('error', createError(ErrorCodes.INVALID_PHASE));
       return;
     }
-    io.to(room.id).emit('game:stateUpdate', { gameState: state });
+    emitSanitizedGameEvent(room.id, 'game:stateUpdate', state);
   });
 
   socket.on('disconnect', () => {

@@ -120,7 +120,11 @@ export function GamePage() {
               {player.isCurrentTurn && <span className="turn-indicator">思考中...</span>}
             </div>
             <div className="dice-row">
-              {(showResult ? resultData?.allDice.find(d => d.id === player.id)?.dice || player.dice : player.dice).map((d, i) => (
+              {(
+                showResult
+                  ? (resultData?.allDice.find(d => d.id === player.id)?.dice ?? [])
+                  : Array.from({ length: player.diceCount ?? player.dice.length }, () => 0)
+              ).map((d, i) => (
                 <Dice key={i} value={d} hidden={!showResult} size="small" />
               ))}
             </div>
