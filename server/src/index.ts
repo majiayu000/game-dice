@@ -17,6 +17,7 @@ const ErrorMessages: Record<string, string> = {
   [ErrorCodes.INVALID_BID]: '无效的叫点',
   [ErrorCodes.GAME_NOT_STARTED]: '游戏尚未开始',
   [ErrorCodes.INVALID_AUTH]: '认证信息无效',
+  [ErrorCodes.INVALID_PHASE]: '当前阶段无法执行此操作',
 };
 
 function createError(code: string): GameError {
@@ -265,9 +266,18 @@ io.on('connection', (socket) => {
       socket.emit('error', createError(ErrorCodes.NOT_IN_ROOM));
       return;
     }
+    if (room.host !== userId) {
+      socket.emit('error', createError(ErrorCodes.NOT_HOST));
+      return;
+    }
+    const currentState = gameEngine.getState(room.id);
+    if (!currentState) {
+      socket.emit('error', createError(ErrorCodes.GAME_NOT_STARTED));
+      return;
+    }
     const state = gameEngine.nextRound(room.id);
     if (!state) {
-      socket.emit('error', createError(ErrorCodes.GAME_NOT_STARTED));
+      socket.emit('error', createError(ErrorCodes.INVALID_PHASE));
       return;
     }
     io.to(room.id).emit('game:stateUpdate', { gameState: state });

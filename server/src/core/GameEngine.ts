@@ -88,7 +88,7 @@ export class GameEngine {
 
   nextRound(roomId: string): GameState | null {
     const state = this.games.get(roomId);
-    if (!state) return null;
+    if (!state || state.phase !== 'result') return null;
 
     const loserIndex = state.players.findIndex(p => p.id === state.loser);
     state.currentPlayerIndex = loserIndex >= 0 ? loserIndex : 0;
