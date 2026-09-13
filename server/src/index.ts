@@ -3,9 +3,10 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { RoomManager } from './core/RoomManager.js';
 import { GameEngine } from './core/GameEngine.js';
-import type { RoomSettings, Bid, GameError } from './types/index.js';
+import type { Bid, GameError } from './types/index.js';
 import { ErrorCodes } from './types/index.js';
 import { logger } from './utils/logger.js';
+import { sanitizeRoomSettings } from './utils/roomSettings.js';
 
 // 错误消息映射
 const ErrorMessages: Record<string, string> = {
@@ -105,10 +106,16 @@ io.on('connection', (socket) => {
     socket.emit('connected', { userId, sessionId: socket.id });
   });
 
-  socket.on('room:create', (data: { settings: RoomSettings }) => {
-    const room = roomManager.createRoom(userId, userName, data.settings);
+  socket.on('room:create', (data: { settings?: unknown }) => {
+    const settings = sanitizeRoomSettings(data?.settings);
+    const room = roomManager.createRoom(userId, userName, settings);
     socket.join(room.id);
-    logger.info('Room', 'Room created', { roomId: room.id, roomCode: room.code, host: userId });
+    logger.info('Room', 'Room created', {
+      roomId: room.id,
+      roomCode: room.code,
+      host: userId,
+      settings: room.settings,
+    });
     socket.emit('room:created', { room });
   });
 
