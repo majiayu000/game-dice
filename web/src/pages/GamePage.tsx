@@ -84,8 +84,15 @@ export function GamePage() {
     socketService.challenge();
   };
 
+  const canAdvanceRound =
+    isHost && gameState.phase === 'result' && !nextRoundLoading;
+
   const handleNextRound = () => {
-    if (!isHost || nextRoundLoading) return;
+    // Require observed result-phase stateUpdate before emitting nextRound.
+    // Otherwise a roundResult-before-stateUpdate race (plus polling) can
+    // advance the server while prevPhaseRef never sees 'result', sticking
+    // the overlay.
+    if (!canAdvanceRound) return;
     setError(null);
     setNextRoundLoading(true);
     socketService.nextRound();
@@ -181,9 +188,13 @@ export function GamePage() {
               <button
                 className="primary"
                 onClick={handleNextRound}
-                disabled={nextRoundLoading}
+                disabled={!canAdvanceRound}
               >
-                {nextRoundLoading ? '处理中...' : '下一轮'}
+                {nextRoundLoading
+                  ? '处理中...'
+                  : gameState.phase !== 'result'
+                    ? '同步结果中...'
+                    : '下一轮'}
               </button>
             ) : (
               <p className="waiting-host">等待房主开始下一轮...</p>
