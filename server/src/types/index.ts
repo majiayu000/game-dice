@@ -71,6 +71,7 @@ export const ErrorCodes = {
   INVALID_BID: 'INVALID_BID',
   GAME_NOT_STARTED: 'GAME_NOT_STARTED',
   INVALID_AUTH: 'INVALID_AUTH',
+  INVALID_PHASE: 'INVALID_PHASE',
 } as const;
 
 export type ErrorCode = typeof ErrorCodes[keyof typeof ErrorCodes];

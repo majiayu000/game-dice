@@ -1,24 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { useSocket } from '../hooks/useSocket';
 import { socketService } from '../services/socketService';
 import { Dice } from '../components/Dice';
 import { BidPanel } from '../components/BidPanel';
-import type { Bid } from '../types/game';
+import type { Bid, GamePhase } from '../types/game';
 import './GamePage.css';
 
 export function GamePage() {
   const navigate = useNavigate();
-  const { userId, gameState, currentRoom, setGameState } = useGameStore();
+  const { userId, gameState, currentRoom, error, setError, setGameState } = useGameStore();
   useSocket();
   const [showResult, setShowResult] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [nextRoundLoading, setNextRoundLoading] = useState(false);
   const [resultData, setResultData] = useState<{
     actualCount: number;
     challengerWins: boolean;
     allDice: { id: string; dice: number[] }[];
   } | null>(null);
+  const prevPhaseRef = useRef<GamePhase | undefined>(undefined);
 
   useEffect(() => {
     if (!gameState) navigate('/');
@@ -30,14 +32,45 @@ export function GamePage() {
       setResultData(data as typeof resultData);
       setShowResult(true);
       setLoading(false);
+      setNextRoundLoading(false);
+      setError(null);
     });
     return () => { unsub(); };
-  }, []);
+  }, [setError]);
+
+  // Close only after an observed result → non-result transition. Closing on
+  // phase !== 'result' alone races with game:roundResult arriving before
+  // game:stateUpdate (phase still 'bidding'), which would clear the modal
+  // and never reopen it when phase later becomes 'result'.
+  useEffect(() => {
+    const prevPhase = prevPhaseRef.current;
+    const currentPhase = gameState?.phase;
+    prevPhaseRef.current = currentPhase;
+
+    if (
+      showResult &&
+      prevPhase === 'result' &&
+      currentPhase !== undefined &&
+      currentPhase !== 'result'
+    ) {
+      setShowResult(false);
+      setResultData(null);
+      setNextRoundLoading(false);
+      setError(null);
+    }
+  }, [gameState, showResult, setError]);
+
+  useEffect(() => {
+    if (error && nextRoundLoading) {
+      setNextRoundLoading(false);
+    }
+  }, [error, nextRoundLoading]);
 
   if (!gameState) return null;
 
   const me = gameState.players.find(p => p.id === userId);
   const isMyTurn = me?.isCurrentTurn;
+  const isHost = currentRoom?.host === userId;
   const currentPlayer = gameState.players[gameState.currentPlayerIndex];
   const otherPlayers = gameState.players.filter(p => p.id !== userId);
 
@@ -51,9 +84,17 @@ export function GamePage() {
     socketService.challenge();
   };
 
+  const canAdvanceRound =
+    isHost && gameState.phase === 'result' && !nextRoundLoading;
+
   const handleNextRound = () => {
-    setShowResult(false);
-    setResultData(null);
+    // Require observed result-phase stateUpdate before emitting nextRound.
+    // Otherwise a roundResult-before-stateUpdate race (plus polling) can
+    // advance the server while prevPhaseRef never sees 'result', sticking
+    // the overlay.
+    if (!canAdvanceRound) return;
+    setError(null);
+    setNextRoundLoading(true);
     socketService.nextRound();
   };
 
@@ -140,7 +181,24 @@ export function GamePage() {
             <p className="result-winner">
               {gameState.players.find(p => p.id === gameState.loser)?.name} 输了这轮!
             </p>
-            <button className="primary" onClick={handleNextRound}>下一轮</button>
+            {error && (
+              <p className="error" onClick={() => setError(null)}>{error}</p>
+            )}
+            {isHost ? (
+              <button
+                className="primary"
+                onClick={handleNextRound}
+                disabled={!canAdvanceRound}
+              >
+                {nextRoundLoading
+                  ? '处理中...'
+                  : gameState.phase !== 'result'
+                    ? '同步结果中...'
+                    : '下一轮'}
+              </button>
+            ) : (
+              <p className="waiting-host">等待房主开始下一轮...</p>
+            )}
           </div>
         </div>
       )}
