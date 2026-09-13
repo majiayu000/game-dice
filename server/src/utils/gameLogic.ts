@@ -18,8 +18,17 @@ export function countDice(players: Player[], targetValue: number, isZhai = false
   return count;
 }
 
+function hasValidBidBounds(bid: Bid): boolean {
+  if (!Number.isInteger(bid.count) || bid.count < 1) return false;
+  if (!Number.isInteger(bid.value) || bid.value < 2 || bid.value > 6) return false;
+  if (bid.isZhai !== undefined && typeof bid.isZhai !== 'boolean') return false;
+  return true;
+}
+
 export function isValidBid(newBid: Bid, currentBid: Bid | null): boolean {
-  if (!currentBid) return newBid.count >= 1 && newBid.value >= 2 && newBid.value <= 6;
+  // Absolute bounds always apply before raise comparisons.
+  if (!hasValidBidBounds(newBid)) return false;
+  if (!currentBid) return true;
   if (newBid.count > currentBid.count) return true;
   if (newBid.count === currentBid.count && newBid.value > currentBid.value) return true;
   return false;

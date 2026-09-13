@@ -21,8 +21,17 @@ export function countDice(players: Player[], targetValue: number, isZhai: boolea
   return count;
 }
 
-// 验证叫点是否合法（必须比上一个叫点大）
+function hasValidBidBounds(bid: Bid): boolean {
+  if (!Number.isInteger(bid.count) || bid.count < 1) return false;
+  if (!Number.isInteger(bid.value) || bid.value < 2 || bid.value > 6) return false;
+  if (bid.isZhai !== undefined && typeof bid.isZhai !== 'boolean') return false;
+  return true;
+}
+
+// 验证叫点是否合法（绝对边界优先，再比上一个叫点大）
 export function isValidBid(newBid: Bid, currentBid: Bid | null): boolean {
+  // Absolute bounds always apply before raise comparisons.
+  if (!hasValidBidBounds(newBid)) return false;
   if (!currentBid) return true;
 
   // 数量更多
