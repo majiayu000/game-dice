@@ -5,7 +5,7 @@ import type { Room } from '../types/room';
 import type { GameState } from '../types/game';
 
 export function useSocket() {
-  const { userName, setUser, setConnectionState, setRoom, setGameState, setError } = useGameStore();
+  const { userName, setUser, setConnectionState, setRoom, setGameState, setError, reset } = useGameStore();
 
   const connect = useCallback(async () => {
     if (!userName) return;
@@ -27,7 +27,13 @@ export function useSocket() {
       socketService.on('connected', (data) => {
         const { userId } = data as { userId: string };
         if (!userId) return;
-        const name = useGameStore.getState().userName;
+        const { userId: previousUserId, userName: name } = useGameStore.getState();
+        // Server drops room membership on disconnect and issues a new userId on
+        // reconnect. Stale currentRoom/gameState still list the old id, so host/me
+        // controls break until we clear them and return the player to the lobby.
+        if (previousUserId && previousUserId !== userId) {
+          reset();
+        }
         setUser(userId, name);
         setConnectionState('connected');
       }),
@@ -44,7 +50,7 @@ export function useSocket() {
       socketService.on('error', (data) => setError((data as { message: string }).message)),
     ];
     return () => unsubscribers.forEach(unsub => unsub());
-  }, [setUser, setConnectionState, setRoom, setGameState, setError]);
+  }, [setUser, setConnectionState, setRoom, setGameState, setError, reset]);
 
   return { connect };
 }
