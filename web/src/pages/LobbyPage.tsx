@@ -8,7 +8,7 @@ import './LobbyPage.css';
 
 export function LobbyPage() {
   const navigate = useNavigate();
-  const { userId, userName, setUser, currentRoom, connectionState, error, setError } = useGameStore();
+  const { userName, setUser, currentRoom, connectionState, error, setError } = useGameStore();
   const { connect } = useSocket();
 
   const [name, setName] = useState('');
@@ -21,17 +21,10 @@ export function LobbyPage() {
   });
 
   useEffect(() => {
-    if (!userId) {
-      const id = `user-${Math.random().toString(36).slice(2, 10)}`;
-      setUser(id, '');
-    }
-  }, [userId, setUser]);
-
-  useEffect(() => {
-    if (userId && userName && connectionState === 'disconnected') {
+    if (userName && connectionState === 'disconnected') {
       connect();
     }
-  }, [userId, userName, connectionState, connect]);
+  }, [userName, connectionState, connect]);
 
   useEffect(() => {
     if (currentRoom) navigate('/room');
@@ -39,7 +32,8 @@ export function LobbyPage() {
 
   const handleEnter = () => {
     if (!name.trim()) return;
-    setUser(userId, name.trim());
+    // userId stays empty until the server assigns one via `connected`.
+    setUser('', name.trim());
   };
 
   const handleCreate = () => {
