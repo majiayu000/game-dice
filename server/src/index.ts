@@ -145,10 +145,16 @@ io.on('connection', (socket: Socket) => {
       return;
     }
 
-    // Re-auth on the same socket: release the previous binding first.
+    // Identity is immutable for the lifetime of this socket. Re-auth would
+    // orphan any RoomManager membership under the prior userId (ghost player /
+    // stuck host), so reject instead of rotating.
     if (userId) {
-      releaseSession(userId, socket.id);
-      userId = '';
+      logger.warn('Auth', 'Rejected re-auth on authenticated socket', {
+        userId,
+        socketId: socket.id,
+      });
+      socket.emit('error', createError(ErrorCodes.INVALID_AUTH));
+      return;
     }
 
     const assignedId = uuidv4();
