@@ -17,11 +17,17 @@ export function PlayerArea({ player, isMe, showDice, rolling }: PlayerAreaProps)
         {player.isCurrentTurn && <span className="turn-indicator">👈 轮到TA</span>}
       </div>
       <div className="dice-container">
-        {player.dice.map((value, index) => (
+        {(
+          showDice && player.dice.length > 0
+            ? player.dice
+            : isMe
+              ? player.dice
+              : Array.from({ length: player.diceCount ?? player.dice.length }, () => 0)
+        ).map((value, index) => (
           <Dice
             key={index}
             value={value}
-            hidden={!showDice}
+            hidden={!showDice && !isMe}
             rolling={rolling}
           />
         ))}

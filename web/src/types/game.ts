@@ -1,7 +1,10 @@
 export interface Player {
   id: string;
   name: string;
+  /** Own dice faces, or empty when this is an opponent view. */
   dice: number[];
+  /** Dice count for rendering hidden placeholders for opponents. */
+  diceCount?: number;
   isCurrentTurn: boolean;
   isAI: boolean;
   isConnected: boolean;
