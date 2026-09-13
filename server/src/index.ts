@@ -23,6 +23,29 @@ function createError(code: string): GameError {
   return { code: code as GameError['code'], message: ErrorMessages[code] || '未知错误' };
 }
 
+/** Reject non-object / non-integer bid payloads at the socket boundary. */
+function parseBidPayload(data: unknown): Bid | null {
+  if (!data || typeof data !== 'object') return null;
+  const bid = (data as { bid?: unknown }).bid;
+  if (!bid || typeof bid !== 'object') return null;
+
+  const { count, value, isZhai, playerId } = bid as {
+    count?: unknown;
+    value?: unknown;
+    isZhai?: unknown;
+    playerId?: unknown;
+  };
+
+  if (typeof count !== 'number' || !Number.isInteger(count) || count < 1) return null;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 2 || value > 6) return null;
+  if (isZhai !== undefined && typeof isZhai !== 'boolean') return null;
+  if (playerId !== undefined && typeof playerId !== 'string') return null;
+
+  const parsed: Bid = { count, value, playerId: typeof playerId === 'string' ? playerId : '' };
+  if (isZhai !== undefined) parsed.isZhai = isZhai;
+  return parsed;
+}
+
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -201,7 +224,12 @@ io.on('connection', (socket) => {
     io.to(room.id).emit('game:started', { gameState });
   });
 
-  socket.on('game:bid', (data: { bid: Bid }) => {
+  socket.on('game:bid', (data: unknown) => {
+    const bid = parseBidPayload(data);
+    if (!bid) {
+      socket.emit('error', createError(ErrorCodes.INVALID_BID));
+      return;
+    }
     const room = roomManager.getPlayerRoom(userId);
     if (!room) {
       socket.emit('error', createError(ErrorCodes.NOT_IN_ROOM));
@@ -216,13 +244,13 @@ io.on('connection', (socket) => {
       socket.emit('error', createError(ErrorCodes.NOT_YOUR_TURN));
       return;
     }
-    const state = gameEngine.makeBid(room.id, userId, data.bid);
+    const state = gameEngine.makeBid(room.id, userId, bid);
     if (!state) {
       socket.emit('error', createError(ErrorCodes.INVALID_BID));
       return;
     }
     io.to(room.id).emit('game:bidMade', {
-      bid: data.bid,
+      bid,
       nextPlayerId: state.players[state.currentPlayerIndex].id
     });
     io.to(room.id).emit('game:stateUpdate', { gameState: state });
