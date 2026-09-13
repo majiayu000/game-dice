@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { useSocket } from '../hooks/useSocket';
 import { socketService } from '../services/socketService';
 import { Dice } from '../components/Dice';
 import { BidPanel } from '../components/BidPanel';
-import type { Bid } from '../types/game';
+import type { Bid, GamePhase } from '../types/game';
 import './GamePage.css';
 
 export function GamePage() {
@@ -20,6 +20,7 @@ export function GamePage() {
     challengerWins: boolean;
     allDice: { id: string; dice: number[] }[];
   } | null>(null);
+  const prevPhaseRef = useRef<GamePhase | undefined>(undefined);
 
   useEffect(() => {
     if (!gameState) navigate('/');
@@ -37,9 +38,21 @@ export function GamePage() {
     return () => { unsub(); };
   }, [setError]);
 
-  // Close result modal only after the server advances past the result phase.
+  // Close only after an observed result → non-result transition. Closing on
+  // phase !== 'result' alone races with game:roundResult arriving before
+  // game:stateUpdate (phase still 'bidding'), which would clear the modal
+  // and never reopen it when phase later becomes 'result'.
   useEffect(() => {
-    if (showResult && gameState && gameState.phase !== 'result') {
+    const prevPhase = prevPhaseRef.current;
+    const currentPhase = gameState?.phase;
+    prevPhaseRef.current = currentPhase;
+
+    if (
+      showResult &&
+      prevPhase === 'result' &&
+      currentPhase !== undefined &&
+      currentPhase !== 'result'
+    ) {
       setShowResult(false);
       setResultData(null);
       setNextRoundLoading(false);
