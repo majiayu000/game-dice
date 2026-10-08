@@ -93,7 +93,7 @@ export class RoomManager {
 
   canStart(roomId: string): boolean {
     const room = this.rooms.get(roomId);
-    if (!room || room.players.length < 2) return false;
+    if (!room || room.status !== 'waiting' || room.players.length < 2) return false;
     return room.players.every(p => p.isReady);
   }
 
